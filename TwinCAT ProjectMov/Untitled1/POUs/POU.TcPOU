@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="POU" Id="{a67fbdca-72a1-41f4-92e4-b24578acb3c9}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM POU
+VAR
+		mcPower : MC_Power;
+	mcSetPosition: MC_SetPosition;
+	mcMoveAboslute: MC_MoveAbsolute;
+	mcMoveRelative: MC_MoveRelative;
+	mcMoveVelocity: MC_MoveVelocity;
+	mcReset:MC_Reset;
+	mcHalt:MC_Halt;
+	mcStop:MC_Stop;
+	
+	bEnable : BOOL;
+	bExecute_SPOS :BOOL;
+	bExecute_MABS :BOOL;
+	bExecute_MREL :BOOL;
+	bExecute_RES :BOOL;
+	bExecute_VEL :BOOL;
+	bExecute_HALT :BOOL;
+	bExecute_STOP :BOOL;
+	
+	fVelocity:LREAL;
+	fPosition:LREAL;
+	fAccel:LREAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[mcPower.Enable:=true;]]></ST>
+    </Implementation>
+    <LineIds Name="POU">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
