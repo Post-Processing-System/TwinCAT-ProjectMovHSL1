@@ -23,6 +23,8 @@ VAR
 	
 	fVelocity:LREAL;
 	fPosition:LREAL;
+	
+	
 	fAccel:LREAL;
 END_VAR
 ]]></Declaration>

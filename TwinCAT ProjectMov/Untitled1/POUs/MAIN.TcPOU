@@ -4,13 +4,25 @@
     <Declaration><![CDATA[PROGRAM MAIN
 VAR
 	myAxis : AXIS_REF;
+	//jouaxis: AXIS_REF;
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[MotionControl_sfc();]]></ST>
+      <ST><![CDATA[MotionControl_sfc();
+
+//jouaxis.NcToPlc.SetPos := 100;
+//jouaxis.NcToPlc.SetVelo := 100;
+//jouaxis.NcToPlc.SetPos := 5000;
+//jouaxis.NcToPlc.TargetPos:=100;
+]]></ST>
     </Implementation>
     <LineIds Name="MAIN">
       <LineId Id="2" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="7" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="13" Count="1" />
+      <LineId Id="12" Count="0" />
     </LineIds>
   </POU>
 </TcPlcObject>
