@@ -4,23 +4,64 @@
     <Declaration><![CDATA[PROGRAM MAIN
 VAR
 	myAxis : AXIS_REF;
-	//jouaxis: AXIS_REF;
+	
+	
+	myAxis1 : AXIS_REF;
+	mcPower : MC_Power;
+	mcSetPosition: MC_SetPosition;
+	mcMoveAbsolute: MC_MoveAbsolute;
+	mcMoveRelative: MC_MoveRelative;
+	mcMoveVelocity: MC_MoveVelocity;
+	mcReset:MC_Reset;
+	mcHalt:MC_Halt;
+	mcStop:MC_Stop;
+
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[MotionControl_sfc();
+      <ST><![CDATA[//myaxis1();
 
-//jouaxis.NcToPlc.SetPos := 100;
+//mcpower.Enable := TRUE;
+//mcpower.Enable_Negative := TRUE;
+//mcpower.Enable_Positive := TRUE;
+
+
+
+
+//mcmoveabsolute.Velocity:=100;
+//mcmoveabsolute.Acceleration :=10;
+//mcmoveabsolute.Position :=1000;
+
+//mcmoveabsolute.Execute := TRUE;
+
+
+
+
+MotionControl_sfc();
+
 //jouaxis.NcToPlc.SetVelo := 100;
 //jouaxis.NcToPlc.SetPos := 5000;
 //jouaxis.NcToPlc.TargetPos:=100;
 ]]></ST>
     </Implementation>
     <LineIds Name="MAIN">
-      <LineId Id="2" Count="0" />
-      <LineId Id="9" Count="0" />
-      <LineId Id="7" Count="0" />
-      <LineId Id="11" Count="0" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="46" Count="0" />
+      <LineId Id="45" Count="0" />
+      <LineId Id="47" Count="1" />
+      <LineId Id="59" Count="0" />
+      <LineId Id="61" Count="0" />
+      <LineId Id="63" Count="0" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="52" Count="1" />
+      <LineId Id="58" Count="0" />
+      <LineId Id="57" Count="0" />
+      <LineId Id="54" Count="2" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="26" Count="0" />
       <LineId Id="13" Count="1" />
       <LineId Id="12" Count="0" />
     </LineIds>
