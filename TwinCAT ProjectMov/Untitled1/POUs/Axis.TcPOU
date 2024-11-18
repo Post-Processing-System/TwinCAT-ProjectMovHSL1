@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="Axis" Id="{fad8b9b6-b69e-4ba0-adbe-b22ee12d4b8e}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK Axis
+VAR_INPUT
+	execute:BOOL;
+	pos :real;
+	vel:INT;
+	enable : BOOL;
+	reset : BOOL;
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	axis: AXIS_REF;
+	moveabs: MC_moveabsolute;
+	power : MC_power;
+	resetaxis: MC_reset;
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[power(axis:=axis);
+moveabs(axis:=axis);
+resetaxis(axis := axis);
+power.Enable := enable;
+
+resetaxis.execute := reset;
+power.Enable_Negative:= TRUE;
+power.Enable_Positive:= TRUE;
+moveabs.Velocity := vel;
+moveabs.Position := pos;
+moveabs.Execute := execute;]]></ST>
+    </Implementation>
+    <LineIds Name="Axis">
+      <LineId Id="9" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="25" Count="1" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="22" Count="1" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

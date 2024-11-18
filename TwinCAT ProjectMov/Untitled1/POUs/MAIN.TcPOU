@@ -4,9 +4,19 @@
     <Declaration><![CDATA[PROGRAM MAIN
 VAR
 	myAxis : AXIS_REF;
+	Axis1 : axis;
+	Axis2 : axis;
 	
+	pos :real;
+	vel :INT :=5000;
+	execute :BOOL;
+	enable: BOOL;
+	timer : ton;
+	timer2 : ton;
+	reset : BOOL;
+	timerstart : BOOL := true;
 	
-	myAxis1 : AXIS_REF;
+	//myAxis1 : AXIS_REF;
 	mcPower : MC_Power;
 	mcSetPosition: MC_SetPosition;
 	mcMoveAbsolute: MC_MoveAbsolute;
@@ -16,23 +26,42 @@ VAR
 	mcHalt:MC_Halt;
 	mcStop:MC_Stop;
 
+	timerstart2: BOOL;
+	timer2reached: BOOL;
+	timer1reached: BOOL;
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[//myaxis1();
-
-//mcpower.Enable := TRUE;
-//mcpower.Enable_Negative := TRUE;
-//mcpower.Enable_Positive := TRUE;
+      <ST><![CDATA[
 
 
+IF timer.ET > T#2S AND (timer.ET < T#4S) THEN
+	reset:=TRUE;	
+	enable := TRUE;
+ELSIF (timer.ET > T#3S) AND (timer.ET < T#5S) THEN
+	//vel := 5000;
+	pos := 10000000;
+	reset:= FALSE;
+ELSIF (timer.ET > T#6S) AND (timer.ET < T#8S) THEN
+	execute := TRUE;
+ELSIF timer1reached THEN
+	execute := FALSE;
+	reset := TRUE;
+	timerstart2 := TRUE;
+	timerstart := FALSE;
+	
+END_IF
 
+IF timer2reached THEN
+	timerstart := TRUE;
+	timerstart2:= FALSE;
+	
+END_IF
 
-//mcmoveabsolute.Velocity:=100;
-//mcmoveabsolute.Acceleration :=10;
-//mcmoveabsolute.Position :=1000;
+axis1(enable := enable, execute := execute, pos := pos, vel := vel, reset := reset);
 
-//mcmoveabsolute.Execute := TRUE;
+timer2(in := timerstart2, pt := T#3S, q=>timer2reached);
+timer(in := timerstart, pt := T#25S, q=> timer1reached);
 
 
 
@@ -45,18 +74,32 @@ MotionControl_sfc();
 ]]></ST>
     </Implementation>
     <LineIds Name="MAIN">
-      <LineId Id="42" Count="0" />
-      <LineId Id="46" Count="0" />
-      <LineId Id="45" Count="0" />
-      <LineId Id="47" Count="1" />
-      <LineId Id="59" Count="0" />
-      <LineId Id="61" Count="0" />
-      <LineId Id="63" Count="0" />
-      <LineId Id="50" Count="0" />
-      <LineId Id="49" Count="0" />
-      <LineId Id="52" Count="1" />
-      <LineId Id="58" Count="0" />
-      <LineId Id="57" Count="0" />
+      <LineId Id="136" Count="0" />
+      <LineId Id="108" Count="0" />
+      <LineId Id="112" Count="0" />
+      <LineId Id="111" Count="0" />
+      <LineId Id="113" Count="0" />
+      <LineId Id="127" Count="0" />
+      <LineId Id="115" Count="1" />
+      <LineId Id="121" Count="0" />
+      <LineId Id="128" Count="0" />
+      <LineId Id="117" Count="1" />
+      <LineId Id="129" Count="2" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="150" Count="0" />
+      <LineId Id="143" Count="0" />
+      <LineId Id="114" Count="0" />
+      <LineId Id="80" Count="0" />
+      <LineId Id="107" Count="0" />
+      <LineId Id="147" Count="0" />
+      <LineId Id="149" Count="0" />
+      <LineId Id="151" Count="0" />
+      <LineId Id="148" Count="0" />
+      <LineId Id="106" Count="0" />
+      <LineId Id="95" Count="0" />
+      <LineId Id="88" Count="0" />
+      <LineId Id="98" Count="0" />
+      <LineId Id="154" Count="0" />
       <LineId Id="54" Count="2" />
       <LineId Id="43" Count="0" />
       <LineId Id="24" Count="0" />
