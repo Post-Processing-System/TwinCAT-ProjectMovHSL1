@@ -3,7 +3,9 @@
   <POU Name="POU" Id="{a67fbdca-72a1-41f4-92e4-b24578acb3c9}" SpecialFunc="None">
     <Declaration><![CDATA[PROGRAM POU
 VAR
-		mcPower : MC_Power;
+	xCordinates :  ARRAY[0..10000] OF INT;
+	yCordinates :  ARRAY[0..10000] OF INT;
+	mcPower : MC_Power;
 	mcSetPosition: MC_SetPosition;
 	mcMoveAboslute: MC_MoveAbsolute;
 	mcMoveRelative: MC_MoveRelative;

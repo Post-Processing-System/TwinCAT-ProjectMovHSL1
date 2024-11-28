@@ -9,103 +9,201 @@ VAR
 	
 	pos :real;
 	vel :INT :=5000;
-	execute :BOOL;
-	enable: BOOL;
-	timer : ton;
-	timer2 : ton;
-	reset : BOOL;
-	timerstart : BOOL := true;
+	executeMove :BOOL;
+	enableaxis: BOOL;
+	resetaxis : BOOL;
 	
-	//myAxis1 : AXIS_REF;
-	mcPower : MC_Power;
-	mcSetPosition: MC_SetPosition;
-	mcMoveAbsolute: MC_MoveAbsolute;
-	mcMoveRelative: MC_MoveRelative;
-	mcMoveVelocity: MC_MoveVelocity;
-	mcReset:MC_Reset;
-	mcHalt:MC_Halt;
-	mcStop:MC_Stop;
+	state: INT :=0;
 
+	timer1 : ton;
+	timer2 : ton;
+	timerstart1: BOOL;
 	timerstart2: BOOL;
 	timer2reached: BOOL;
 	timer1reached: BOOL;
+	timertime1: TIME;
+	timertime2: TIME;
+	
+	xCordinates :  ARRAY[0..10000] OF INT;
+	yCordinates :  ARRAY[0..10000] OF INT;
+	
+	executehome: BOOL;
+	homingdone: BOOL;
+	movingdone: BOOL;
+	arraynumber : INT := 0;
+	
+	bReadCmd : BOOL;
+	
+
+
+
 END_VAR
 ]]></Declaration>
     <Implementation>
       <ST><![CDATA[
+(*
+timertime1 := T#24S;
+timertime2:= T#3S;
 
-
-IF timer.ET > T#2S AND (timer.ET < T#4S) THEN
-	reset:=TRUE;	
-	enable := TRUE;
-ELSIF (timer.ET > T#3S) AND (timer.ET < T#5S) THEN
+IF timer1.ET > T#2S AND (timer1.ET < T#4S) THEN
+	resetaxis:=TRUE;	
+	enableaxis := TRUE;
+ELSIF (timer1.ET > T#3S) AND (timer1.ET < T#5S) THEN
 	//vel := 5000;
 	pos := 10000000;
-	reset:= FALSE;
-ELSIF (timer.ET > T#6S) AND (timer.ET < T#8S) THEN
-	execute := TRUE;
+	resetaxis:= FALSE;
+ELSIF (timer1.ET > T#6S) AND (timer1.ET < T#8S) THEN
+	executemove := TRUE;
 ELSIF timer1reached THEN
-	execute := FALSE;
-	reset := TRUE;
+	executemove := FALSE;
+	resetaxis := TRUE;
 	timerstart2 := TRUE;
-	timerstart := FALSE;
+	timerstart1 := FALSE;
 	
 END_IF
 
 IF timer2reached THEN
-	timerstart := TRUE;
+	timerstart1 := TRUE;
 	timerstart2:= FALSE;
 	
 END_IF
+*)
 
-axis1(enable := enable, execute := execute, pos := pos, vel := vel, reset := reset);
 
-timer2(in := timerstart2, pt := T#3S, q=>timer2reached);
-timer(in := timerstart, pt := T#25S, q=> timer1reached);
+CASE state OF 
+	0: //waiting for start up program
+	timerstart1:=TRUE;
+	timertime1:= T#3S;
+	IF timer1reached THEN
+		timerstart1 := FALSE;
+		state:= 10;
+	END_IF
+	
+	10: // reset axis
+	resetaxis:=TRUE;
+	
+	timerstart1:=TRUE;
+	timertime1:= T#2S;
+	IF timer1reached THEN
+		timerstart1 := FALSE;
+		state:= 20;
+	END_IF
+	
+	20: // stop resetting axis
+	resetaxis:= FALSE;
+	
+	timerstart1:=TRUE;
+	timertime1:= T#2S;
+	IF timer1reached THEN
+		timerstart1 := FALSE;
+		state:= 30;
+	END_IF
+	
+	30: // enable axis
+	enableaxis := TRUE;
 
+	timerstart1:=TRUE;
+	timertime1:= T#2S;
+	IF timer1reached THEN
+		timerstart1 := FALSE;
+		state:= 40;
+	END_IF
+	
+	40: // homing axis
+	executehome:= TRUE;
+	
+	IF homingdone THEN
+		timerstart1 := FALSE;
+		state:= 50;
+	END_IF
+	
+	50:
+	vel := 50;
+	pos := xcordinates[arraynumber]/1.5;
+	timerstart1:=TRUE;
+	timertime1:= T#50MS;
+	
+	IF timer1reached THEN
+		executemove := TRUE;
+		timerstart1 := FALSE;
+		state := 60;
+	END_IF
+	
+	60:
+	IF movingdone THEN
+		executemove := FALSE;		
+		state:= 50;
+		arraynumber := arraynumber +1;
+	END_IF
+	
+	
+	
+END_CASE
+
+
+
+axis1(
+enableAxis := enableaxis, 
+executeMove := executeMove, 
+executeHome:= executehome,
+pos := pos, 
+vel := vel, 
+resetaxis := resetaxis,
+homingdone => homingdone,
+posreached => movingdone
+);
+
+timer2(in := timerstart2, pt := timertime2, q=>timer2reached);
+timer1(in := timerstart1, pt := timertime1, q=> timer1reached);
 
 
 
 MotionControl_sfc();
 
-//jouaxis.NcToPlc.SetVelo := 100;
-//jouaxis.NcToPlc.SetPos := 5000;
-//jouaxis.NcToPlc.TargetPos:=100;
+
 ]]></ST>
     </Implementation>
     <LineIds Name="MAIN">
-      <LineId Id="136" Count="0" />
-      <LineId Id="108" Count="0" />
-      <LineId Id="112" Count="0" />
-      <LineId Id="111" Count="0" />
-      <LineId Id="113" Count="0" />
-      <LineId Id="127" Count="0" />
-      <LineId Id="115" Count="1" />
-      <LineId Id="121" Count="0" />
-      <LineId Id="128" Count="0" />
-      <LineId Id="117" Count="1" />
-      <LineId Id="129" Count="2" />
-      <LineId Id="142" Count="0" />
-      <LineId Id="150" Count="0" />
-      <LineId Id="143" Count="0" />
-      <LineId Id="114" Count="0" />
-      <LineId Id="80" Count="0" />
-      <LineId Id="107" Count="0" />
-      <LineId Id="147" Count="0" />
-      <LineId Id="149" Count="0" />
-      <LineId Id="151" Count="0" />
-      <LineId Id="148" Count="0" />
-      <LineId Id="106" Count="0" />
-      <LineId Id="95" Count="0" />
-      <LineId Id="88" Count="0" />
-      <LineId Id="98" Count="0" />
-      <LineId Id="154" Count="0" />
-      <LineId Id="54" Count="2" />
-      <LineId Id="43" Count="0" />
-      <LineId Id="24" Count="0" />
-      <LineId Id="28" Count="0" />
-      <LineId Id="26" Count="0" />
-      <LineId Id="13" Count="1" />
+      <LineId Id="643" Count="1" />
+      <LineId Id="619" Count="0" />
+      <LineId Id="642" Count="0" />
+      <LineId Id="620" Count="21" />
+      <LineId Id="540" Count="14" />
+      <LineId Id="585" Count="0" />
+      <LineId Id="580" Count="4" />
+      <LineId Id="577" Count="0" />
+      <LineId Id="586" Count="0" />
+      <LineId Id="578" Count="0" />
+      <LineId Id="597" Count="0" />
+      <LineId Id="587" Count="0" />
+      <LineId Id="590" Count="4" />
+      <LineId Id="589" Count="0" />
+      <LineId Id="588" Count="0" />
+      <LineId Id="595" Count="1" />
+      <LineId Id="599" Count="8" />
+      <LineId Id="609" Count="1" />
+      <LineId Id="616" Count="2" />
+      <LineId Id="613" Count="0" />
+      <LineId Id="612" Count="0" />
+      <LineId Id="686" Count="2" />
+      <LineId Id="608" Count="0" />
+      <LineId Id="689" Count="3" />
+      <LineId Id="694" Count="1" />
+      <LineId Id="693" Count="0" />
+      <LineId Id="598" Count="0" />
+      <LineId Id="696" Count="0" />
+      <LineId Id="700" Count="1" />
+      <LineId Id="708" Count="1" />
+      <LineId Id="702" Count="0" />
+      <LineId Id="699" Count="0" />
+      <LineId Id="697" Count="1" />
+      <LineId Id="555" Count="6" />
+      <LineId Id="682" Count="0" />
+      <LineId Id="562" Count="2" />
+      <LineId Id="683" Count="0" />
+      <LineId Id="703" Count="0" />
+      <LineId Id="565" Count="5" />
+      <LineId Id="572" Count="3" />
       <LineId Id="12" Count="0" />
     </LineIds>
   </POU>
