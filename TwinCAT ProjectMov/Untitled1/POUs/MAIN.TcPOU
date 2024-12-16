@@ -3,13 +3,25 @@
   <POU Name="MAIN" Id="{af2f60e7-4dc5-45ab-9fa0-122a30a9981d}" SpecialFunc="None">
     <Declaration><![CDATA[PROGRAM MAIN
 VAR
-	myAxis : AXIS_REF;
-	Axis1 : axis;
-	Axis2 : axis;
+	LinearAxis : axis;
+	RotationAxis : axis;
 	
-	pos :real;
-	vel :INT :=5000;
-	executeMove :BOOL;
+	linearPos :real;
+	linearVel :INT ;
+	executeLinearMove :BOOL;
+	executehometostop: BOOL;
+	linearhomingdone: BOOL;
+	linearmovingdone: BOOL;
+	
+	rotationPos : REAL;
+	rotationVel :INT;
+	executeRotationMove : BOOL;	
+	executehometozero:BOOL;
+	rotationhomingdone : BOOL;
+	rotationmovingdone: BOOL;
+	
+	
+	
 	enableaxis: BOOL;
 	resetaxis : BOOL;
 	
@@ -23,51 +35,287 @@ VAR
 	timer1reached: BOOL;
 	timertime1: TIME;
 	timertime2: TIME;
+	elapsedtime1: TIME;
+	elapsedtime2: TIME;
 	
-	xCordinates :  ARRAY[0..10000] OF INT;
-	yCordinates :  ARRAY[0..10000] OF INT;
-	
-	executehome: BOOL;
-	homingdone: BOOL;
-	movingdone: BOOL;
+	xCordinates :  ARRAY [0..10000] OF REAL := [200,500,540,300,0];
+	rotationpoints :  ARRAY [0..10000] OF REAL;
+	yCordinates :  ARRAY [0..10000] OF REAL;
 	arraynumber : INT := 0;
 	
-	bReadCmd : BOOL;
 	
+	//digi intputs
+	resetButton: BOOL;
+	startbutton: BOOL;
+	stopbutton: BOOL; // needs to be defined
+	powerok: BOOL;
+	
+	tool2posreached: BOOL;
+	tool1posreached: BOOL; // needs to be defined
+	
+	// digi outputs
+	enabletool1: BOOL; // relais
+	enabletool2: BOOL; // relais
+	initresetlamp : BOOL; // lamp
+	enableprocesslamp: BOOL; // lamp	
+	errorlamp: BOOL;	// lamp
+	tool1pos: BOOL; // valve
+	tool2pos: BOOL; // valve
+	
+	
+	// internal variables
+	takepicturecommand: BOOL;
+	coordinatesreceived: BOOL;
+	startsecondround: BOOL;
 
 
-
+	// stop sequense maken
+	
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[
-(*
-timertime1 := T#24S;
-timertime2:= T#3S;
+      <ST><![CDATA[IF NOT resetbutton  THEN
+	state := 0;
+ELSIF powerok THEN
+	state:= 10;	
+END_IF
 
-IF timer1.ET > T#2S AND (timer1.ET < T#4S) THEN
-	resetaxis:=TRUE;	
-	enableaxis := TRUE;
-ELSIF (timer1.ET > T#3S) AND (timer1.ET < T#5S) THEN
-	//vel := 5000;
-	pos := 10000000;
+
+IF stopbutton THEN
+	state := 300;
+END_IF
+
+CASE state OF
+	
+	0:
+	errorlamp := FALSE;
+	timerstart1:=NOT timer1reached;
+	timertime1:= T#500MS;
+	IF timer1reached THEN
+		initresetlamp := NOT initresetlamp;
+	END_IF
+
+	10: //waiting for start up program
+	initresetlamp := TRUE;
+	timerstart1:=TRUE;
+	timertime1:= T#3S;
+	IF timer1reached THEN
+		timerstart1 := FALSE;
+		state:= 20;
+	END_IF
+	
+	20: // start resetting axis
+	resetaxis:=TRUE;
+	tool2pos := FALSE;
+	tool1pos:= TRUE; 
+	
+	timerstart1:=TRUE;
+	timertime1:= T#2S;
+	IF timer1reached AND tool1posreached THEN
+		timerstart1 := FALSE;
+		state:= 30;
+	ELSIF timer1reached AND NOT tool1posreached THEN
+		errorlamp := TRUE;
+	END_IF
+	
+	30: // stop resetting axis
 	resetaxis:= FALSE;
-ELSIF (timer1.ET > T#6S) AND (timer1.ET < T#8S) THEN
-	executemove := TRUE;
-ELSIF timer1reached THEN
-	executemove := FALSE;
-	resetaxis := TRUE;
-	timerstart2 := TRUE;
-	timerstart1 := FALSE;
 	
-END_IF
+	timerstart1:=TRUE;
+	timertime1:= T#2S;
+	IF timer1reached THEN
+		timerstart1 := FALSE;
+		state:= 40;
+	END_IF
+	
+	40: // enable axis
+	enableaxis := TRUE;
 
-IF timer2reached THEN
-	timerstart1 := TRUE;
-	timerstart2:= FALSE;
+	timerstart1:=TRUE;
+	timertime1:= T#2S;
+	IF timer1reached THEN
+		timerstart1 := FALSE;
+		state:= 50;
+	END_IF
 	
-END_IF
-*)
+	50: // homing axis
+	executehometostop:= TRUE; // for linear axis
+	executehometozero:= TRUE; // rotation axis
+
+	IF linearhomingdone AND rotationhomingdone THEN
+		state:= 60;
+
+	END_IF
+	
+	60: // go to start pos
+	linearVel := 250;
+	rotationvel := 250;
+	linearPos := 400;
+	rotationpos := 180;
+	
+	timerstart1:=TRUE;
+	timertime1:= T#1S;
+	
+	IF elapsedtime1 >= T#10MS THEN
+		executeLinearMove := TRUE;
+		executerotationmove:= TRUE;		
+	ELSIF timer1reached THEN 
+		enabletool2 := FALSE; // disabling tool 2 after the second round
+		enableprocesslamp := FALSE; // show that the process is finished
+		timerstart1 := FALSE;
+		state := 70;			
+	END_IF
+	
+	70: // wait until start pos is reached
+	IF linearmovingdone AND rotationmovingdone THEN
+		executeLinearMove := FALSE;	
+		executerotationmove := FALSE;	
+		initresetlamp := FALSE; // show that the initialisation is done
+		state:= 80;
+	END_IF;
+	
+	80: // wait on start command
+	timerstart1:= NOT timer1reached;
+	timertime1:= T#500MS;
+	IF timer1reached THEN
+		enableprocesslamp := NOT enableprocesslamp;
+	END_IF	
+	
+	IF startbutton THEN
+		enableprocesslamp := TRUE;
+		state := 81;
+	END_IF
+	
+	
+	81: // delay send take picture command
+	timerstart1:=TRUE;
+	timertime1:= T#3S;
+	
+	IF timer1reached THEN
+		timerstart1 := FALSE;
+		takepicturecommand := TRUE;
+		state := 90;
+	END_IF
+	
+	90: // wait until confirmation receiving coordinates
+	IF coordinatesreceived THEN
+		takepicturecommand := FALSE;		
+	END_IF
+	
+	timerstart1:=TRUE;
+	timertime1:= T#2S;
+	
+	IF timer1reached THEN
+		state := 100;
+	END_IF
+	
+	100: // go to working pos
+	linearVel := 250;
+	rotationvel := 250;
+	linearPos := 10;
+	rotationpos := 0;
+	
+	timerstart1:=TRUE;
+	timertime1:= T#10MS;
+	
+	IF timer1reached THEN
+		IF NOT startsecondround THEN
+			enabletool1 := TRUE;
+		END_IF
+		executeLinearMove := TRUE;
+		executerotationmove:= TRUE;				
+		timerstart1 := FALSE;
+		state := 110;
+	END_IF
+	
+	
+	110: // wait untill working pos is reached
+	IF linearmovingdone AND rotationmovingdone THEN
+		executeLinearMove := FALSE;	
+		executerotationmove := FALSE;	
+		state:= 120;
+	END_IF;
+	
+	
+	120: // set coordinate pos
+	linearVel := 250;
+	rotationvel := 250;
+	linearPos := xcordinates[arraynumber];
+	rotationpos := rotationpoints[arraynumber];
+	timerstart1:=TRUE;
+	timertime1:= T#10MS;
+	
+	
+	IF timer1reached THEN
+		executeLinearMove := TRUE;
+		executerotationmove:= TRUE;
+		timerstart1 := FALSE;
+		state := 130;
+	END_IF
+	
+	130: //execute coordinate pos
+	IF linearmovingdone AND rotationmovingdone THEN
+		executeLinearMove := FALSE;	
+		executerotationmove := FALSE;	
+		state:= 120;
+		IF (xcordinates[arraynumber]) = 0 THEN
+			state := 140;
+		ELSIF  (xcordinates[arraynumber]) = 0 AND startsecondround THEN
+			startsecondround := FALSE;
+			state := 60;
+		END_IF
+		arraynumber := arraynumber +1;	
+	END_IF
+	
+	140: // move away from tool pos
+	linearVel := 250;
+	rotationvel := 250;
+	linearPos := 200;
+	rotationpos := 180;
+	
+	timerstart1:=TRUE;
+	timertime1:= T#10MS;
+	
+	IF timer1reached THEN
+		executeLinearMove := TRUE;
+		executerotationmove:= TRUE;
+		timerstart1 := FALSE;
+		state := 160;
+	END_IF
+
+	
+	160: // wait until away from tool pos is reached and disable tool 1, enanble tool 2, switch tool
+	IF linearmovingdone AND rotationmovingdone THEN
+		enabletool1 := FALSE;
+		enabletool2 := TRUE;
+		
+		tool1pos := FALSE;
+		tool2pos := TRUE;
+		timerstart1:=TRUE;
+		timertime1:= T#3S;
+		
+		executeLinearMove := FALSE;	
+		executerotationmove := FALSE;	
+	END_IF;
+	
+	IF tool2posreached THEN
+		state := 100;
+		arraynumber := 0;
+		startsecondround := TRUE;
+	ELSIF timer1reached THEN
+		errorlamp:= TRUE;		
+	END_IF
+	
+	
+	300: // stop steps
+	executeLinearMove := FALSE;	
+	executerotationmove := FALSE;	
+	
+
+END_CASE
+
+
+(*
 
 
 CASE state OF 
@@ -110,30 +358,52 @@ CASE state OF
 	END_IF
 	
 	40: // homing axis
-	executehome:= TRUE;
+	executehometostop:= TRUE; // for linear axis
+	executehometozero:= TRUE;
+	//rotationpos := 0;	// set pos for zero rotation pos
+	//rotationvel := 50;jaja
 	
-	IF homingdone THEN
+	timerstart1:=TRUE;
+	
+	timertime1:= T#50MS;
+	IF timer1reached THEN
+		timerstart1 := FALSE;
+		state:= 41;
+	END_IF
+	
+	41:
+	//executerotationmove := TRUE;
+	
+	IF linearhomingdone AND rotationhomingdone  THEN
 		timerstart1 := FALSE;
 		state:= 50;
 	END_IF
 	
 	50:
-	vel := 50;
-	pos := xcordinates[arraynumber]/1.5;
+	linearVel := 250;
+	rotationvel := 250;
+	linearPos := xcordinates[arraynumber];
+	rotationpos := rotationpoints[arraynumber];
 	timerstart1:=TRUE;
-	timertime1:= T#50MS;
+	timertime1:= T#10MS;
 	
 	IF timer1reached THEN
-		executemove := TRUE;
+		executeLinearMove := TRUE;
+		executerotationmove:= TRUE;
 		timerstart1 := FALSE;
 		state := 60;
 	END_IF
 	
 	60:
-	IF movingdone THEN
-		executemove := FALSE;		
+	IF linearmovingdone AND rotationmovingdone THEN
+		executeLinearMove := FALSE;	
+		executerotationmove := FALSE;	
 		state:= 50;
+		IF (xcordinates[arraynumber]) = 0 THEN
+			arraynumber := 0;
+		END_IF
 		arraynumber := arraynumber +1;
+	
 	END_IF
 	
 	
@@ -141,69 +411,84 @@ CASE state OF
 END_CASE
 
 
-
-axis1(
-enableAxis := enableaxis, 
-executeMove := executeMove, 
-executeHome:= executehome,
-pos := pos, 
-vel := vel, 
-resetaxis := resetaxis,
-homingdone => homingdone,
-posreached => movingdone
+*)
+LinearAxis(
+	enableAxis := enableaxis, 
+	executeMove := executeLinearMove, 
+	executeHomeToStop:= executehometostop,
+	pos := linearPos, 
+	vel := linearVel, 
+	resetaxis := resetaxis,
+	homingDoneTostop => linearhomingdone,
+	posreached => linearmovingdone
 );
 
-timer2(in := timerstart2, pt := timertime2, q=>timer2reached);
-timer1(in := timerstart1, pt := timertime1, q=> timer1reached);
+RotationAxis(
+	enableAxis := enableaxis, 
+	executeMove := executeLinearMove, 
+	executeHometozero:= executehometozero,
+	pos := rotationPos, 
+	vel := rotationvel, 
+	resetaxis := resetaxis,
+	homingDoneToZero => rotationhomingdone,
+	posreached => rotationmovingdone
+);
+
+timer2(in := timerstart2, pt := timertime2, et=> elapsedtime1, q=>timer2reached);
+timer1(in := timerstart1, pt := timertime1, et=> elapsedtime2, q=> timer1reached);
 
 
 
-MotionControl_sfc();
+
 
 
 ]]></ST>
     </Implementation>
     <LineIds Name="MAIN">
-      <LineId Id="643" Count="1" />
-      <LineId Id="619" Count="0" />
-      <LineId Id="642" Count="0" />
-      <LineId Id="620" Count="21" />
-      <LineId Id="540" Count="14" />
-      <LineId Id="585" Count="0" />
-      <LineId Id="580" Count="4" />
-      <LineId Id="577" Count="0" />
-      <LineId Id="586" Count="0" />
-      <LineId Id="578" Count="0" />
-      <LineId Id="597" Count="0" />
-      <LineId Id="587" Count="0" />
-      <LineId Id="590" Count="4" />
-      <LineId Id="589" Count="0" />
-      <LineId Id="588" Count="0" />
-      <LineId Id="595" Count="1" />
-      <LineId Id="599" Count="8" />
-      <LineId Id="609" Count="1" />
-      <LineId Id="616" Count="2" />
-      <LineId Id="613" Count="0" />
-      <LineId Id="612" Count="0" />
-      <LineId Id="686" Count="2" />
-      <LineId Id="608" Count="0" />
-      <LineId Id="689" Count="3" />
-      <LineId Id="694" Count="1" />
-      <LineId Id="693" Count="0" />
-      <LineId Id="598" Count="0" />
-      <LineId Id="696" Count="0" />
-      <LineId Id="700" Count="1" />
-      <LineId Id="708" Count="1" />
-      <LineId Id="702" Count="0" />
-      <LineId Id="699" Count="0" />
-      <LineId Id="697" Count="1" />
-      <LineId Id="555" Count="6" />
-      <LineId Id="682" Count="0" />
-      <LineId Id="562" Count="2" />
-      <LineId Id="683" Count="0" />
-      <LineId Id="703" Count="0" />
-      <LineId Id="565" Count="5" />
-      <LineId Id="572" Count="3" />
+      <LineId Id="2865" Count="2" />
+      <LineId Id="2869" Count="1" />
+      <LineId Id="3279" Count="1" />
+      <LineId Id="3278" Count="0" />
+      <LineId Id="3281" Count="1" />
+      <LineId Id="2871" Count="3" />
+      <LineId Id="3210" Count="0" />
+      <LineId Id="3201" Count="4" />
+      <LineId Id="2876" Count="1" />
+      <LineId Id="3212" Count="0" />
+      <LineId Id="2879" Count="8" />
+      <LineId Id="3276" Count="0" />
+      <LineId Id="2888" Count="37" />
+      <LineId Id="2927" Count="15" />
+      <LineId Id="3209" Count="0" />
+      <LineId Id="2943" Count="7" />
+      <LineId Id="3213" Count="0" />
+      <LineId Id="2951" Count="2" />
+      <LineId Id="3235" Count="0" />
+      <LineId Id="3256" Count="3" />
+      <LineId Id="3267" Count="0" />
+      <LineId Id="3263" Count="0" />
+      <LineId Id="3237" Count="1" />
+      <LineId Id="3264" Count="0" />
+      <LineId Id="3240" Count="1" />
+      <LineId Id="3265" Count="0" />
+      <LineId Id="3215" Count="0" />
+      <LineId Id="3219" Count="1" />
+      <LineId Id="3222" Count="4" />
+      <LineId Id="3216" Count="1" />
+      <LineId Id="2966" Count="26" />
+      <LineId Id="2994" Count="63" />
+      <LineId Id="3269" Count="0" />
+      <LineId Id="3277" Count="0" />
+      <LineId Id="3058" Count="0" />
+      <LineId Id="3270" Count="2" />
+      <LineId Id="3059" Count="7" />
+      <LineId Id="3268" Count="0" />
+      <LineId Id="3273" Count="0" />
+      <LineId Id="3067" Count="1" />
+      <LineId Id="3283" Count="2" />
+      <LineId Id="3287" Count="0" />
+      <LineId Id="3286" Count="0" />
+      <LineId Id="3069" Count="130" />
       <LineId Id="12" Count="0" />
     </LineIds>
   </POU>
