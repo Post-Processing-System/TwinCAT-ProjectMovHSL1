@@ -8,12 +8,13 @@ VAR_INPUT
 	vel:INT;
 	enableAxis : BOOL;
 	resetaxis : BOOL;
-	executeHome: BOOL;
-	
+	executeHomeToStop: BOOL;
+	executeHomeToZero : BOOL;
 END_VAR
 VAR_OUTPUT
 	posreached: BOOL;
-	homingDone: BOOL;
+	homingDoneToZero: BOOL;
+	homingDoneToStop: bool;
 	//movingDone: BOOL;
 END_VAR
 VAR
@@ -26,6 +27,7 @@ VAR
 	
 	homingsettings: ST_HomingOptions;	
 	homingparas: mc_homingparameter;
+	
 END_VAR
 ]]></Declaration>
     <Implementation>
@@ -44,16 +46,20 @@ move_abs.Position := pos;
 move_abs.Execute := executeMove;
 posreached := move_abs.Done;
 
-(*
-home_axis.HomingMode := MC_direct;
+power_axis.Enable_Negative:= TRUE;
+power_axis.Enable_Positive:= TRUE;
+
+
+home_axis.HomingMode := mc_defaulthoming;
 home_axis.Position := 0; //pos after homing
 home_axis.Options := homingsettings;
-home_axis.Execute := executeHome;
-homingDone:= home_axis.Done;
+home_axis.Execute := executeHomeTozero;
+homingDoneToZero:= home_axis.Done;
 
-homingsettings.SearchVelocity :=20;
-*)
-home_axistostop.Execute := executehome;
+homingsettings.SearchVelocity :=200;
+homingsettings.SearchDirection := 1; // positive direction
+
+home_axistostop.Execute := executeHomeToStop;
 home_axistostop.Direction:= 3;
 home_axistostop.Velocity := 20;
 home_axistostop.SetPosition := 0;
@@ -63,23 +69,18 @@ home_axistostop.TimeLimit := T#20S;
 home_axistostop.TorqueLimit:= 200;
 home_axistostop.DistanceLimit:=10000;
 home_axistostop.TorqueTolerance := 10;
-homingdone := home_axistostop.Done;
+homingDoneTostop := home_axistostop.Done;
 
 
-power_axis.Enable_Negative:= TRUE;
-power_axis.Enable_Positive:= TRUE;]]></ST>
+]]></ST>
     </Implementation>
     <LineIds Name="Axis">
-      <LineId Id="374" Count="3" />
-      <LineId Id="425" Count="1" />
-      <LineId Id="424" Count="0" />
-      <LineId Id="378" Count="15" />
-      <LineId Id="428" Count="0" />
-      <LineId Id="423" Count="0" />
-      <LineId Id="429" Count="6" />
-      <LineId Id="438" Count="2" />
-      <LineId Id="437" Count="0" />
-      <LineId Id="395" Count="1" />
+      <LineId Id="557" Count="13" />
+      <LineId Id="625" Count="1" />
+      <LineId Id="624" Count="0" />
+      <LineId Id="571" Count="8" />
+      <LineId Id="596" Count="0" />
+      <LineId Id="580" Count="13" />
       <LineId Id="53" Count="0" />
     </LineIds>
   </POU>
