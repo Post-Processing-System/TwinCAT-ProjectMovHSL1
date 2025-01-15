@@ -116,7 +116,7 @@
                     </o>
                     <o>
                       <v n="Id">397264524L</v>
-                      <v n="Value">"MAIN.vel"</v>
+                      <v n="Value">"MAIN.linearVel"</v>
                     </o>
                     <o>
                       <v n="Id">2597686782L</v>

@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_OPCUA" Id="{218a020a-9415-497b-a412-86279d355eab}">
+    <Declaration><![CDATA[TYPE ST_OPCUA :
+STRUCT	
+	nMyNumber : INT;
+	bEnable : BOOL;
+	sMessage : STRING;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

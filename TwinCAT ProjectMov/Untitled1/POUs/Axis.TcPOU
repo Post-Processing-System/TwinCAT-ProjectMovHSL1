@@ -10,6 +10,9 @@ VAR_INPUT
 	resetaxis : BOOL;
 	executeHomeToStop: BOOL;
 	executeHomeToZero : BOOL;
+	homingsearchvelocity : LREAL;
+	posafterhoming: LREAL;
+	refsensor: BOOL;
 END_VAR
 VAR_OUTPUT
 	posreached: BOOL;
@@ -28,6 +31,7 @@ VAR
 	homingsettings: ST_HomingOptions;	
 	homingparas: mc_homingparameter;
 	
+
 END_VAR
 ]]></Declaration>
     <Implementation>
@@ -49,25 +53,27 @@ posreached := move_abs.Done;
 power_axis.Enable_Negative:= TRUE;
 power_axis.Enable_Positive:= TRUE;
 
-
+// homing axis with refsensor
 home_axis.HomingMode := mc_defaulthoming;
-home_axis.Position := 0; //pos after homing
+home_axis.Position := posafterhoming; //pos after homing
 home_axis.Options := homingsettings;
 home_axis.Execute := executeHomeTozero;
+home_axis.bCalibrationCam := refsensor; 
 homingDoneToZero:= home_axis.Done;
 
-homingsettings.SearchVelocity :=200;
+homingsettings.SearchVelocity :=homingsearchvelocity;
 homingsettings.SearchDirection := 1; // positive direction
 
+// home axis to endstop
 home_axistostop.Execute := executeHomeToStop;
 home_axistostop.Direction:= 3;
-home_axistostop.Velocity := 20;
+home_axistostop.Velocity := 30;
 home_axistostop.SetPosition := 0;
-home_axistostop.DetectionVelocityLimit := 30;
+home_axistostop.DetectionVelocityLimit := 40;
 home_axistostop.DetectionVelocityTime:= T#1S;
 home_axistostop.TimeLimit := T#20S;
 home_axistostop.TorqueLimit:= 200;
-home_axistostop.DistanceLimit:=10000;
+home_axistostop.DistanceLimit:=1000;
 home_axistostop.TorqueTolerance := 10;
 homingDoneTostop := home_axistostop.Done;
 
@@ -78,8 +84,11 @@ homingDoneTostop := home_axistostop.Done;
       <LineId Id="557" Count="13" />
       <LineId Id="625" Count="1" />
       <LineId Id="624" Count="0" />
-      <LineId Id="571" Count="8" />
+      <LineId Id="571" Count="5" />
+      <LineId Id="630" Count="0" />
+      <LineId Id="577" Count="2" />
       <LineId Id="596" Count="0" />
+      <LineId Id="661" Count="0" />
       <LineId Id="580" Count="13" />
       <LineId Id="53" Count="0" />
     </LineIds>

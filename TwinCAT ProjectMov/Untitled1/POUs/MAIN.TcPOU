@@ -12,6 +12,8 @@ VAR
 	executehometostop: BOOL;
 	linearhomingdone: BOOL;
 	linearmovingdone: BOOL;
+	linearsearchinghoming: LREAL;
+	linearposafterhoming: LREAL;
 	
 	rotationPos : REAL;
 	rotationVel :INT;
@@ -19,6 +21,8 @@ VAR
 	executehometozero:BOOL;
 	rotationhomingdone : BOOL;
 	rotationmovingdone: BOOL;
+	rotationsearchinghoming: LREAL;
+	rotationposafterhoming: lreal;
 	
 	
 	
@@ -38,20 +42,26 @@ VAR
 	elapsedtime1: TIME;
 	elapsedtime2: TIME;
 	
-	xCordinates :  ARRAY [0..10000] OF REAL := [200,500,540,300,0];
-	rotationpoints :  ARRAY [0..10000] OF REAL;
-	yCordinates :  ARRAY [0..10000] OF REAL;
-	arraynumber : INT := 0;
+	//xCordinates :  ARRAY [0..10000] OF REAL := [200,500,540,300,0];
+	//rotationpoints :  ARRAY [0..10000] OF REAL;
+	//yCordinates :  ARRAY [0..10000] OF REAL;
+	arraynumber : INT := 1;
 	
 	
 	//digi intputs
 	resetButton: BOOL;
 	startbutton: BOOL;
-	stopbutton: BOOL; // needs to be defined
+	stopbutton: BOOL; 
+	estop1 : BOOL;
+	estop2 : BOOL;
+	doorswitch :BOOL;
 	powerok: BOOL;
+	refsensorrotation: BOOL;
+	refsensorlinear: BOOL;
+
 	
 	tool2posreached: BOOL;
-	tool1posreached: BOOL; // needs to be defined
+	tool1posreached: BOOL; 
 	
 	// digi outputs
 	enabletool1: BOOL; // relais
@@ -61,28 +71,102 @@ VAR
 	errorlamp: BOOL;	// lamp
 	tool1pos: BOOL; // valve
 	tool2pos: BOOL; // valve
+	enableledstrip : BOOL; // light for camera
 	
 	
 	// internal variables
-	takepicturecommand: BOOL;
-	coordinatesreceived: BOOL;
 	startsecondround: BOOL;
-
-
-	// stop sequense maken
+	programstarted:bool:= false;
 	
+	// vision communication
+	takepicturecommand: BOOL;
+	searchingForgear : BOOL; // written by vision system | showed in visu
+	gearnotfound : BOOL; // written by vision system | showed in visu
+	gearfounded :BOOL; // written by vision system | showed in visu
+	sendingdata : BOOL; // written by vision system | showed in visu
+	coordinatesreceived: BOOL; // written by vision system
+
+
+(*
+	
+	{attribute 'OPC.UA.DA':='1'} // Enables a variable for OPC UA
+	{attribute 'OPC.UA.DA.StructuredType':='3'} //Enables StructuredType for a STRUCT or a function block
+	stOPCUA : ST_OPCUA;
+	
+	{attribute 'OPC.UA.DA' := '1'} 
+	{attribute 'OPC.UA.DA.Access' := '3'} // 0 = none, 1 = read-only, 2 = write access only, 3 = read and write access (default if no tag is used)
+	nCounter : INT :=20;
+
+	{attribute 'OPC.UA.DA' := '1'} 
+	{attribute 'OPC.UA.DA.Access' := '3'} // 0 = none, 1 = read-only, 2 = write access only, 3 = read and write access (default if no tag is used)
+	teller : INT;
+	
+	{attribute 'OPC.UA.DA' := '1'} 
+	{attribute 'OPC.UA.DA.Access' := '3'}
+	bStart : BOOL;
+	
+	{attribute 'OPC.UA.DA' := '1'} 
+	jow : BOOL;
+	
+	
+	{attribute 'OPC.UA.DA' := '1'} 
+	{attribute 'OPC.UA.DA.Description' := 'My Test Integer Array'} //Sets a text for the OPC UA attribute "Description".
+	aMyNumbers : ARRAY[1..5] OF INT;
+	
+*)
+
+	X_coords: ARRAY[1..9999] OF REAL;   	// Array to store X coordinates
+    Y_coords: ARRAY[1..9999] OF REAL;   	// Array to store Y coordinates
+	
+	status_message 		: STRING(255);  	// Ontvangt status van Python
+	next_move		 	: STRING(255);  	// Ontvangt next move van Python
+	StartProcess 		: BOOL := FALSE; 	// Variabele om Python te triggeren
+	
+	Restart				: BOOL;				// Varaiable om alleen de array te verwijderen wanneer proces klaar is
+	PulseTimer : TON;      					// Timer voor puls
+	i :INT;
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[IF NOT resetbutton  THEN
+      <ST><![CDATA[(*
+IF bStart THEN
+	nCounter := nCounter + 1;
+END_IF
+
+*)
+
+(*
+PulseTimer(IN := StartProcess, PT := T#500MS);
+
+IF PulseTimer.Q THEN
+    StartProcess := FALSE; 					// Reset de puls automatisch
+END_IF
+*)
+
+IF StartProcess AND NOT Restart THEN
+    FOR i := 1 TO 9999 DO
+        x_coords[i] := 0.0;   				// Stel X-coördinaten in op 0
+        y_coords[i] := 0.0;   				// Stel Y-coördinaten in op 0
+    END_FOR
+END_IF
+
+IF startprocess THEN
+	coordinatesreceived := FALSE;
+END_IF
+
+IF NOT resetbutton AND NOT programstarted THEN
 	state := 0;
-ELSIF powerok THEN
+ELSIF powerok AND NOT programstarted THEN
 	state:= 10;	
 END_IF
 
 
 IF stopbutton THEN
 	state := 300;
+END_IF
+
+IF estop1 OR estop2 OR NOT doorswitch THEN
+	state := 400;
 END_IF
 
 CASE state OF
@@ -94,8 +178,13 @@ CASE state OF
 	IF timer1reached THEN
 		initresetlamp := NOT initresetlamp;
 	END_IF
+	IF resetbutton THEN
+		state := 10; 
+		errorlamp := FALSE;
+	END_IF
 
 	10: //waiting for start up program
+	programstarted := true;
 	initresetlamp := TRUE;
 	timerstart1:=TRUE;
 	timertime1:= T#3S;
@@ -106,15 +195,13 @@ CASE state OF
 	
 	20: // start resetting axis
 	resetaxis:=TRUE;
-	tool2pos := FALSE;
-	tool1pos:= TRUE; 
 	
 	timerstart1:=TRUE;
 	timertime1:= T#2S;
-	IF timer1reached AND tool1posreached THEN
+	IF  tool1posreached or true THEN
 		timerstart1 := FALSE;
 		state:= 30;
-	ELSIF timer1reached AND NOT tool1posreached THEN
+	ELSIF timer1reached  THEN
 		errorlamp := TRUE;
 	END_IF
 	
@@ -139,6 +226,10 @@ CASE state OF
 	END_IF
 	
 	50: // homing axis
+	rotationsearchinghoming := 10;
+	linearsearchinghoming := 40;
+	rotationposafterhoming:= 0;
+	linearposafterhoming := 325;
 	executehometostop:= TRUE; // for linear axis
 	executehometozero:= TRUE; // rotation axis
 
@@ -149,22 +240,46 @@ CASE state OF
 	
 	60: // go to start pos
 	linearVel := 250;
-	rotationvel := 250;
-	linearPos := 400;
+	rotationvel := 90;
+	linearPos := 325;
 	rotationpos := 180;
+	
+
+	
+	(*
+	FOR i := 1 TO 10000 DO
+    	xcordinates[i] := 0; 
+		rotationpoints[i] := 0;
+	END_FOR
+	*)
 	
 	timerstart1:=TRUE;
 	timertime1:= T#1S;
 	
-	IF elapsedtime1 >= T#10MS THEN
+	IF timer1reached THEN
 		executeLinearMove := TRUE;
-		executerotationmove:= TRUE;		
-	ELSIF timer1reached THEN 
+		executerotationmove:= TRUE;	
+		state := 61;
+		timerstart1 := FALSE;
+	END_IF;
+
+	
+	61:
+	timerstart1:=TRUE;
+	timertime1:= T#2S;
+	tool1pos:= TRUE; 
+	IF timer1reached AND tool1posreached  THEN 
+		tool2pos := FALSE;
+	
+		enabletool1 := FALSE; // for stopping tools after stop button pressed
+		//enabletool2 := FALSE;
+		
 		enabletool2 := FALSE; // disabling tool 2 after the second round
 		enableprocesslamp := FALSE; // show that the process is finished
 		timerstart1 := FALSE;
 		state := 70;			
 	END_IF
+	
 	
 	70: // wait until start pos is reached
 	IF linearmovingdone AND rotationmovingdone THEN
@@ -182,6 +297,7 @@ CASE state OF
 	END_IF	
 	
 	IF startbutton THEN
+		timerstart1 := FALSE;
 		enableprocesslamp := TRUE;
 		state := 81;
 	END_IF
@@ -193,17 +309,29 @@ CASE state OF
 	
 	IF timer1reached THEN
 		timerstart1 := FALSE;
-		takepicturecommand := TRUE;
-		state := 90;
+		enableledstrip := TRUE;
+		StartProcess := TRUE; //command to python
+		
+		PulseTimer(IN := StartProcess, PT := T#500MS);
+
+		IF PulseTimer.Q THEN
+			StartProcess := FALSE; 					// Reset de puls automatisch
+			state := 90;
+		END_IF
+		
+		
 	END_IF
 	
 	90: // wait until confirmation receiving coordinates
 	IF coordinatesreceived THEN
-		takepicturecommand := FALSE;		
-	END_IF
-	
-	timerstart1:=TRUE;
-	timertime1:= T#2S;
+		takepicturecommand := FALSE;
+		enableledstrip := FALSE;
+		timerstart1:=TRUE;
+		timertime1:= T#2S;
+	ELSIF gearnotfound THEN
+		enableledstrip := FALSE;
+		state := 80;	
+	END_IF	
 	
 	IF timer1reached THEN
 		state := 100;
@@ -211,7 +339,7 @@ CASE state OF
 	
 	100: // go to working pos
 	linearVel := 250;
-	rotationvel := 250;
+	rotationvel := 30;
 	linearPos := 10;
 	rotationpos := 0;
 	
@@ -238,10 +366,10 @@ CASE state OF
 	
 	
 	120: // set coordinate pos
-	linearVel := 250;
-	rotationvel := 250;
-	linearPos := xcordinates[arraynumber];
-	rotationpos := rotationpoints[arraynumber];
+	linearVel := 50;
+	rotationvel := 30;
+	linearPos := x_coords[arraynumber];
+	rotationpos := y_coords[arraynumber];
 	timerstart1:=TRUE;
 	timertime1:= T#10MS;
 	
@@ -258,18 +386,18 @@ CASE state OF
 		executeLinearMove := FALSE;	
 		executerotationmove := FALSE;	
 		state:= 120;
-		IF (xcordinates[arraynumber]) = 0 THEN
+		IF (x_coords[arraynumber]) = 0 AND NOT startsecondround THEN
 			state := 140;
-		ELSIF  (xcordinates[arraynumber]) = 0 AND startsecondround THEN
+		ELSIF  (x_coords[arraynumber]) = 0 AND startsecondround THEN
 			startsecondround := FALSE;
 			state := 60;
 		END_IF
-		arraynumber := arraynumber +1;	
+		arraynumber := arraynumber +10;	
 	END_IF
 	
 	140: // move away from tool pos
 	linearVel := 250;
-	rotationvel := 250;
+	rotationvel := 50;
 	linearPos := 200;
 	rotationpos := 180;
 	
@@ -300,8 +428,9 @@ CASE state OF
 	
 	IF tool2posreached THEN
 		state := 100;
-		arraynumber := 0;
+		arraynumber := 1;
 		startsecondround := TRUE;
+		errorlamp:= false;
 	ELSIF timer1reached THEN
 		errorlamp:= TRUE;		
 	END_IF
@@ -311,125 +440,55 @@ CASE state OF
 	executeLinearMove := FALSE;	
 	executerotationmove := FALSE;	
 	
-
-END_CASE
-
-
-(*
-
-
-CASE state OF 
-	0: //waiting for start up program
-	timerstart1:=TRUE;
-	timertime1:= T#3S;
-	IF timer1reached THEN
-		timerstart1 := FALSE;
-		state:= 10;
-	END_IF
-	
-	10: // reset axis
-	resetaxis:=TRUE;
-	
-	timerstart1:=TRUE;
-	timertime1:= T#2S;
-	IF timer1reached THEN
-		timerstart1 := FALSE;
-		state:= 20;
-	END_IF
-	
-	20: // stop resetting axis
-	resetaxis:= FALSE;
-	
-	timerstart1:=TRUE;
-	timertime1:= T#2S;
-	IF timer1reached THEN
-		timerstart1 := FALSE;
-		state:= 30;
-	END_IF
-	
-	30: // enable axis
-	enableaxis := TRUE;
-
-	timerstart1:=TRUE;
-	timertime1:= T#2S;
-	IF timer1reached THEN
-		timerstart1 := FALSE;
-		state:= 40;
-	END_IF
-	
-	40: // homing axis
-	executehometostop:= TRUE; // for linear axis
-	executehometozero:= TRUE;
-	//rotationpos := 0;	// set pos for zero rotation pos
-	//rotationvel := 50;jaja
-	
-	timerstart1:=TRUE;
-	
-	timertime1:= T#50MS;
-	IF timer1reached THEN
-		timerstart1 := FALSE;
-		state:= 41;
-	END_IF
-	
-	41:
-	//executerotationmove := TRUE;
-	
-	IF linearhomingdone AND rotationhomingdone  THEN
-		timerstart1 := FALSE;
-		state:= 50;
-	END_IF
-	
-	50:
-	linearVel := 250;
-	rotationvel := 250;
-	linearPos := xcordinates[arraynumber];
-	rotationpos := rotationpoints[arraynumber];
 	timerstart1:=TRUE;
 	timertime1:= T#10MS;
 	
 	IF timer1reached THEN
-		executeLinearMove := TRUE;
-		executerotationmove:= TRUE;
 		timerstart1 := FALSE;
 		state := 60;
 	END_IF
 	
-	60:
-	IF linearmovingdone AND rotationmovingdone THEN
-		executeLinearMove := FALSE;	
-		executerotationmove := FALSE;	
-		state:= 50;
-		IF (xcordinates[arraynumber]) = 0 THEN
-			arraynumber := 0;
-		END_IF
-		arraynumber := arraynumber +1;
+	400: //noodstop
+	executeLinearMove := FALSE;	
+	executerotationmove := FALSE;	
+	enabletool1 := FALSE;
+	enabletool2 := FALSE;
+	errorlamp := TRUE;
+	initresetlamp:= FALSE;
 	
+	timerstart1:=TRUE;
+	timertime1:= T#10MS;
+	IF timer1reached THEN
+		timerstart1:= FALSE;
+		state := 0;
 	END_IF
-	
-	
-	
 END_CASE
 
 
-*)
 LinearAxis(
 	enableAxis := enableaxis, 
 	executeMove := executeLinearMove, 
-	executeHomeToStop:= executehometostop,
+	executeHometozero:=  executehometostop,
 	pos := linearPos, 
 	vel := linearVel, 
 	resetaxis := resetaxis,
-	homingDoneTostop => linearhomingdone,
+	refsensor :=NOT refsensorlinear,
+	homingsearchvelocity:= linearsearchinghoming,
+	posafterhoming:= linearposafterhoming,
+	homingDoneTozero => linearhomingdone,
 	posreached => linearmovingdone
 );
 
 RotationAxis(
 	enableAxis := enableaxis, 
-	executeMove := executeLinearMove, 
+	executeMove := executerotationMove, 
 	executeHometozero:= executehometozero,
 	pos := rotationPos, 
 	vel := rotationvel, 
 	resetaxis := resetaxis,
+	refsensor := refsensorrotation,
+	homingsearchvelocity:= rotationsearchinghoming,
+	posafterhoming := rotationposafterhoming,
 	homingDoneToZero => rotationhomingdone,
 	posreached => rotationmovingdone
 );
@@ -439,56 +498,92 @@ timer1(in := timerstart1, pt := timertime1, et=> elapsedtime2, q=> timer1reached
 
 
 
+//	 _ _______                                             _             
+//	| (_______)                                        _  (_)            
+//	| |_     _     ____ ___  ____  ____  _____  ____ _| |_ _ ____   ____ 
+//	| | |   | |   / ___) _ \|  _ \|  _ \| ___ |/ ___|_   _) |  _ \ / _  |
+//	| | |___| |  ( (__| |_| | | | | | | | ____( (___  | |_| | | | ( (_| |
+//	|_|\_____/    \____)___/|_| |_|_| |_|_____)\____)  \__)_|_| |_|\___ |
+//	                                                              (_____|
+
+//inputs
+tool1posreached := io.cilinderpos1;
+tool2posreached := io.cilinderpos2;
+resetbutton := io.resetbutton;
+startbutton := io.startbutton;
+stopbutton := NOT io.stopbutton;
+estop1 := NOT io.estop1;
+estop2 := io.estop2;
+doorswitch := io.doorswitch;
+powerok := io.powerok;
+refsensorrotation := io.refrotation;
+refsensorlinear := io.reflinear;
+
+//outputs
+io.enabletool1 := enabletool1;
+io.enabletool2 := enabletool2;
+io.cilindertopos1 := tool1pos;
+io.cilindertopos2 := tool2pos;
+io.initresetlamp:= initresetlamp;
+io.processlamp := enableprocesslamp;
+io.errorlamp := errorlamp;
+io.enableledstrip := enableledstrip;
 
 
 
 ]]></ST>
     </Implementation>
     <LineIds Name="MAIN">
-      <LineId Id="2865" Count="2" />
-      <LineId Id="2869" Count="1" />
-      <LineId Id="3279" Count="1" />
-      <LineId Id="3278" Count="0" />
-      <LineId Id="3281" Count="1" />
-      <LineId Id="2871" Count="3" />
-      <LineId Id="3210" Count="0" />
-      <LineId Id="3201" Count="4" />
-      <LineId Id="2876" Count="1" />
-      <LineId Id="3212" Count="0" />
-      <LineId Id="2879" Count="8" />
-      <LineId Id="3276" Count="0" />
-      <LineId Id="2888" Count="37" />
-      <LineId Id="2927" Count="15" />
-      <LineId Id="3209" Count="0" />
-      <LineId Id="2943" Count="7" />
-      <LineId Id="3213" Count="0" />
-      <LineId Id="2951" Count="2" />
-      <LineId Id="3235" Count="0" />
-      <LineId Id="3256" Count="3" />
-      <LineId Id="3267" Count="0" />
-      <LineId Id="3263" Count="0" />
-      <LineId Id="3237" Count="1" />
-      <LineId Id="3264" Count="0" />
-      <LineId Id="3240" Count="1" />
-      <LineId Id="3265" Count="0" />
-      <LineId Id="3215" Count="0" />
-      <LineId Id="3219" Count="1" />
-      <LineId Id="3222" Count="4" />
-      <LineId Id="3216" Count="1" />
-      <LineId Id="2966" Count="26" />
-      <LineId Id="2994" Count="63" />
-      <LineId Id="3269" Count="0" />
-      <LineId Id="3277" Count="0" />
-      <LineId Id="3058" Count="0" />
-      <LineId Id="3270" Count="2" />
-      <LineId Id="3059" Count="7" />
-      <LineId Id="3268" Count="0" />
-      <LineId Id="3273" Count="0" />
-      <LineId Id="3067" Count="1" />
-      <LineId Id="3283" Count="2" />
-      <LineId Id="3287" Count="0" />
-      <LineId Id="3286" Count="0" />
-      <LineId Id="3069" Count="130" />
+      <LineId Id="4348" Count="5" />
+      <LineId Id="4767" Count="0" />
+      <LineId Id="4747" Count="6" />
+      <LineId Id="4777" Count="0" />
+      <LineId Id="4754" Count="4" />
+      <LineId Id="4746" Count="0" />
+      <LineId Id="4354" Count="1" />
+      <LineId Id="4778" Count="1" />
+      <LineId Id="4356" Count="72" />
+      <LineId Id="4709" Count="1" />
+      <LineId Id="4713" Count="1" />
+      <LineId Id="4429" Count="13" />
+      <LineId Id="4447" Count="0" />
+      <LineId Id="4769" Count="0" />
+      <LineId Id="4775" Count="0" />
+      <LineId Id="4449" Count="4" />
+      <LineId Id="4776" Count="0" />
+      <LineId Id="4454" Count="5" />
+      <LineId Id="4733" Count="1" />
+      <LineId Id="4718" Count="0" />
+      <LineId Id="4465" Count="1" />
+      <LineId Id="4720" Count="0" />
+      <LineId Id="4730" Count="1" />
+      <LineId Id="4911" Count="0" />
+      <LineId Id="4724" Count="0" />
+      <LineId Id="4906" Count="0" />
+      <LineId Id="4908" Count="1" />
+      <LineId Id="4905" Count="0" />
+      <LineId Id="4910" Count="0" />
+      <LineId Id="4725" Count="3" />
+      <LineId Id="4721" Count="2" />
+      <LineId Id="4467" Count="15" />
+      <LineId Id="4736" Count="0" />
+      <LineId Id="4483" Count="12" />
+      <LineId Id="4759" Count="0" />
+      <LineId Id="4762" Count="4" />
+      <LineId Id="4760" Count="1" />
+      <LineId Id="4496" Count="110" />
+      <LineId Id="5039" Count="0" />
+      <LineId Id="4607" Count="21" />
+      <LineId Id="5037" Count="1" />
+      <LineId Id="4629" Count="16" />
+      <LineId Id="4703" Count="0" />
+      <LineId Id="4705" Count="0" />
+      <LineId Id="4715" Count="0" />
+      <LineId Id="4647" Count="11" />
+      <LineId Id="4708" Count="0" />
+      <LineId Id="4716" Count="0" />
+      <LineId Id="4659" Count="38" />
+      <LineId Id="4699" Count="2" />
       <LineId Id="12" Count="0" />
     </LineIds>
   </POU>

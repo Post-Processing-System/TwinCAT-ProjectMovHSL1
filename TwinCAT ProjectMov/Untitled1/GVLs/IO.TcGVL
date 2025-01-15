@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <GVL Name="IO" Id="{60a9649a-3f03-4b3c-82e7-9ab7b294353b}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL
+	//Raw value of 3 load cells together
+	EL3356_valueX AT %I* : DINT;
+	EL3356_valueY AT %I* : DINT;
+	EL3356_valueZ AT %I* : DINT;
+	
+	//inputs
+	startbutton AT %I* : BOOL;
+	stopbutton AT %I* :BOOL;
+	resetbutton AT %I* : BOOL;
+	estop1 AT %I* : BOOL; 
+	estop2 AT %I* : BOOL; 
+	refrotation AT %I* :BOOL;
+	spare1 AT %I* :BOOL;
+	spare2 AT %I* :BOOL;
+	cilinderpos1 AT %I* :BOOL;
+	cilinderpos2 AT %I* :BOOL;
+	doorswitch AT %I* :BOOL;
+	powerok AT %I* :BOOL;
+	reflinear AT %I* :BOOL;
+	
+	//ouputs
+	enabletool1 AT %Q* : BOOL;
+	enabletool2 AT %Q* : BOOL;
+	initresetlamp AT %Q* : BOOL;
+	processlamp AT %Q* : BOOL;
+	errorlamp AT %Q* : BOOL;
+	cilindertopos1 AT %Q* :BOOL;
+	cilindertopos2 AT %Q* :BOOL;
+	enableledstrip AT %Q* :BOOL;
+	
+	
+	
+
+
+
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>
