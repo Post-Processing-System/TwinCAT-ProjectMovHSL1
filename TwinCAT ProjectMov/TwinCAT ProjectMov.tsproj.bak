@@ -4864,7 +4864,7 @@ Bit1: Value bigger/equal Limit2]]></Comment>
 				<Link VarA="PlcTask Inputs^IO.resetbutton" VarB="Channel 3^Input"/>
 				<Link VarA="PlcTask Inputs^IO.spare1" VarB="Channel 7^Input"/>
 				<Link VarA="PlcTask Inputs^IO.spare2" VarB="Channel 8^Input"/>
-				<Link VarA="PlcTask Inputs^IO.startbutton" VarB="Channel 1^Input"/>
+				<Link VarA="PlcTask Inputs^IO.startbutton" VarB="Channel 16^Input"/>
 				<Link VarA="PlcTask Inputs^IO.stopbutton" VarB="Channel 2^Input"/>
 			</OwnerB>
 			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^linear Axis 3">

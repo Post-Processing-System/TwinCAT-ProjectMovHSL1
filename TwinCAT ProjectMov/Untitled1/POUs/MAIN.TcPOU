@@ -125,6 +125,7 @@ VAR
 	Restart				: BOOL;				// Varaiable om alleen de array te verwijderen wanneer proces klaar is
 	PulseTimer : TON;      					// Timer voor puls
 	i :INT;
+	pulstimertime: TIME;
 END_VAR
 ]]></Declaration>
     <Implementation>
@@ -266,8 +267,9 @@ CASE state OF
 	
 	61:
 	timerstart1:=TRUE;
-	timertime1:= T#2S;
+	timertime1:= T#4S;
 	tool1pos:= TRUE; 
+	arraynumber := 1;
 	IF timer1reached AND tool1posreached  THEN 
 		tool2pos := FALSE;
 	
@@ -308,11 +310,12 @@ CASE state OF
 	timertime1:= T#3S;
 	
 	IF timer1reached THEN
-		timerstart1 := FALSE;
+		
 		enableledstrip := TRUE;
 		StartProcess := TRUE; //command to python
+		timerstart1 := FALSE;
 		
-		PulseTimer(IN := StartProcess, PT := T#500MS);
+		pulstimertime := T#500MS;
 
 		IF PulseTimer.Q THEN
 			StartProcess := FALSE; 					// Reset de puls automatisch
@@ -340,7 +343,7 @@ CASE state OF
 	100: // go to working pos
 	linearVel := 250;
 	rotationvel := 30;
-	linearPos := 10;
+	linearPos := x_coords[1];
 	rotationpos := 0;
 	
 	timerstart1:=TRUE;
@@ -430,7 +433,7 @@ CASE state OF
 		state := 100;
 		arraynumber := 1;
 		startsecondround := TRUE;
-		errorlamp:= false;
+		errorlamp:= FALSE;
 	ELSIF timer1reached THEN
 		errorlamp:= TRUE;		
 	END_IF
@@ -455,6 +458,7 @@ CASE state OF
 	enabletool2 := FALSE;
 	errorlamp := TRUE;
 	initresetlamp:= FALSE;
+	enableprocesslamp :=FALSE;
 	
 	timerstart1:=TRUE;
 	timertime1:= T#10MS;
@@ -495,7 +499,7 @@ RotationAxis(
 
 timer2(in := timerstart2, pt := timertime2, et=> elapsedtime1, q=>timer2reached);
 timer1(in := timerstart1, pt := timertime1, et=> elapsedtime2, q=> timer1reached);
-
+PulseTimer(IN := StartProcess, PT := pulstimertime);
 
 
 //	 _ _______                                             _             
@@ -558,6 +562,7 @@ io.enableledstrip := enableledstrip;
       <LineId Id="4720" Count="0" />
       <LineId Id="4730" Count="1" />
       <LineId Id="4911" Count="0" />
+      <LineId Id="5043" Count="0" />
       <LineId Id="4724" Count="0" />
       <LineId Id="4906" Count="0" />
       <LineId Id="4908" Count="1" />
@@ -568,6 +573,7 @@ io.enableledstrip := enableledstrip;
       <LineId Id="4467" Count="15" />
       <LineId Id="4736" Count="0" />
       <LineId Id="4483" Count="12" />
+      <LineId Id="5041" Count="0" />
       <LineId Id="4759" Count="0" />
       <LineId Id="4762" Count="4" />
       <LineId Id="4760" Count="1" />
@@ -575,6 +581,7 @@ io.enableledstrip := enableledstrip;
       <LineId Id="5039" Count="0" />
       <LineId Id="4607" Count="21" />
       <LineId Id="5037" Count="1" />
+      <LineId Id="5040" Count="0" />
       <LineId Id="4629" Count="16" />
       <LineId Id="4703" Count="0" />
       <LineId Id="4705" Count="0" />
